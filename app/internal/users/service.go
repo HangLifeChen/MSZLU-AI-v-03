@@ -3,13 +3,20 @@ package users
 import (
 	"common/biz"
 	"context"
+
+	"core/upload"
+	"fmt"
+	"mime/multipart"
 	"model"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/mszlu521/thunder/database"
 	"github.com/mszlu521/thunder/errs"
 	"github.com/mszlu521/thunder/logs"
+	// "github.com/mszlu521/thunder/upload"
 )
 
 type service struct {
@@ -184,4 +191,69 @@ func newService() *service {
 	return &service{
 		repo: newModels(database.GetPostgresDB().GormDB),
 	}
+}
+
+func (s *service) uploadAvatar(ctx context.Context, userID uuid.UUID, file *multipart.FileHeader) (*UploadAvatarResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	// 检查文件大小（限制为5MB）
+	if file.Size > 5*1024*1024 {
+		return nil, fmt.Errorf("文件大小不能超过5MB")
+	}
+
+	// 检查文件类型
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	allowedExts := map[string]bool{
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
+		".gif":  true,
+		".webp": true,
+	}
+	if !allowedExts[ext] {
+		return nil, fmt.Errorf("不支持的文件类型，仅支持 jpg, jpeg, png, gif, webp 格式")
+	}
+
+	// 打开文件
+	src, err := file.Open()
+	if err != nil {
+		logs.Errorf("打开文件失败: %v", err)
+		return nil, fmt.Errorf("打开文件失败")
+	}
+	defer src.Close()
+
+	// 生成文件名
+	filename := fmt.Sprintf("avatar/%s/%s%s", userID.String(), uuid.New().String(), ext)
+
+	// 上传到阿里云OSS
+	err = upload.AliyunOSSUpload.Upload(ctx, src, filename)
+	if err != nil {
+		logs.Errorf("上传文件失败: %v", err)
+		return nil, fmt.Errorf("上传文件失败")
+	}
+
+	// 获取公开访问URL
+	url := upload.AliyunOSSUpload.GetPublicUrl(filename)
+
+	// 更新用户头像
+	user, err := s.repo.getUser(ctx, userID)
+	if err != nil {
+		logs.Errorf("查询用户失败: %v", err)
+		return nil, errs.DBError
+	}
+	if user == nil {
+		return nil, biz.ErrUserNotFound
+	}
+
+	user.Avatar = url
+	err = s.repo.updateUser(ctx, user)
+	if err != nil {
+		logs.Errorf("更新用户头像失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	return &UploadAvatarResponse{
+		URL: url,
+	}, nil
 }

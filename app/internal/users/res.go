@@ -24,6 +24,10 @@ type ListUserResponse struct {
 	Total int64           `json:"total"`
 }
 
+type UploadAvatarResponse struct {
+	URL string `json:"url"`
+}
+
 func toUserResponse(user *model.User) *UserResponse {
 	return &UserResponse{
 		Id:              user.Id,

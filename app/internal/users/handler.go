@@ -93,6 +93,26 @@ func (h *Handler) ListUsers(c *gin.Context) {
 	res.Success(c, resp)
 }
 
+func (h *Handler) UploadAvatar(c *gin.Context) {
+	userID, ok := req.GetUserIdUUID(c)
+	if !ok {
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+
+	resp, err := h.service.uploadAvatar(c.Request.Context(), userID, file)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, resp)
+}
+
 func NewHandler() *Handler {
 	return &Handler{
 		service: newService(),
