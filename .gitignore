@@ -2,3 +2,5 @@
 /upload/
 app/__debug_bin*
 /env/
+**/.env
+.env
