@@ -1,36 +1,131 @@
 package subscriptions
 
 import (
-	"model"
-	"time"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/mszlu521/thunder/req"
 	"github.com/mszlu521/thunder/res"
 )
 
 type Handler struct {
-}
-
-func (h Handler) GetUserSubscription(c *gin.Context) {
-	res.Success(c, &SubscriptionResponse{
-		Configs: &model.PlanConfig{
-			MaxAgents:            10,
-			MaxKnowledgeBaseSize: 10,
-			MaxWorkflows:         10,
-		},
-		Plan:          string(model.FreePlan),
-		ID:            uuid.New(),
-		UserID:        uuid.New(),
-		Duration:      string(model.Yearly),
-		PaymentMethod: string(model.WeChatPay),
-		StartDate:     time.Now().Format(time.DateTime),
-		EndDate:       time.Now().Add(365 * 24 * time.Hour).Format(time.DateTime),
-		CreatedAt:     time.Now().Format(time.DateTime),
-		UpdatedAt:     time.Now().Format(time.DateTime),
-	})
+	service *service
 }
 
 func NewHandler() *Handler {
-	return &Handler{}
+	return &Handler{
+		service: newService(),
+	}
+}
+
+// GetUserSubscription 获取当前用户的订阅信息
+// GET /api/v1/subscription/current
+func (h *Handler) GetUserSubscription(c *gin.Context) {
+	userID, ok := req.GetUserIdUUID(c)
+	if !ok {
+		return
+	}
+
+	resp, err := h.service.getCurrentSubscription(c.Request.Context(), userID)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+
+	// 如果用户没有订阅，返回null
+	if resp == nil {
+		res.Success(c, nil)
+		return
+	}
+
+	res.Success(c, resp)
+}
+
+// GetSubscriptionPlans 获取所有订阅计划
+// GET /api/v1/subscription/plans
+func (h *Handler) GetSubscriptionPlans(c *gin.Context) {
+	plans, err := h.service.getSubscriptionPlans(c.Request.Context())
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+
+	res.Success(c, plans)
+}
+
+// UpdateSubscription 创建或更新订阅
+// POST /api/v1/subscription
+func (h *Handler) UpdateSubscription(c *gin.Context) {
+	var updateReq UpdateSubscriptionReq
+	if err := req.JsonParam(c, &updateReq); err != nil {
+		return
+	}
+
+	userID, ok := req.GetUserIdUUID(c)
+	if !ok {
+		return
+	}
+
+	resp, err := h.service.updateSubscription(c.Request.Context(), userID, updateReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+
+	res.Success(c, resp)
+}
+
+// CancelSubscription 取消订阅
+// DELETE /api/v1/subscription
+func (h *Handler) CancelSubscription(c *gin.Context) {
+	userID, ok := req.GetUserIdUUID(c)
+	if !ok {
+		return
+	}
+
+	err := h.service.cancelSubscription(c.Request.Context(), userID)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+
+	res.Success(c, true)
+}
+
+// CreateWeChatPaymentOrder 创建微信支付订单
+// POST /api/v1/subscription/wechat/order
+func (h *Handler) CreateWeChatPaymentOrder(c *gin.Context) {
+	var orderReq CreateWeChatPaymentOrderReq
+	if err := req.JsonParam(c, &orderReq); err != nil {
+		return
+	}
+
+	userID, ok := req.GetUserIdUUID(c)
+	if !ok {
+		return
+	}
+
+	resp, err := h.service.createWeChatPaymentOrder(c.Request.Context(), userID, orderReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+
+	res.Success(c, resp)
+}
+
+// CheckPaymentStatus 检查支付状态
+// GET /api/v1/subscription/wechat/status/:orderId
+func (h *Handler) CheckPaymentStatus(c *gin.Context) {
+	var orderID uuid.UUID
+	if err := req.Path(c, "orderId", &orderID); err != nil {
+		return
+	}
+
+	resp, err := h.service.checkPaymentStatus(c.Request.Context(), orderID)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+
+	res.Success(c, resp)
 }
