@@ -14,7 +14,7 @@ var (
 
 func Init() {
 	var err error
-	err = godotenv.Load()
+	err = godotenv.Load("./.env")
 	//初始化aliyun oss
 	if err != nil {
 		panic(err)
