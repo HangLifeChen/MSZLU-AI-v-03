@@ -3,6 +3,7 @@ package upload
 import (
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/mszlu521/thunder/upload"
 )
 
@@ -12,9 +13,12 @@ var (
 )
 
 func Init() {
-
-	//初始化aliyun oss
 	var err error
+	err = godotenv.Load()
+	//初始化aliyun oss
+	if err != nil {
+		panic(err)
+	}
 	AliyunOSSUpload, err = upload.InitAliyunOSSUpload(
 		os.Getenv("ALIYUN_ACCESS_KEY_ID"),
 		os.Getenv("ALIYUN_ACCESS_KEY_SECRET"),
