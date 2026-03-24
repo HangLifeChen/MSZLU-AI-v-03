@@ -32,16 +32,18 @@ func (UserSubscription) TableName() string {
 
 // SubscriptionPlanConfig 订阅计划配置模型
 type SubscriptionPlanConfig struct {
-	Id          int64                  `json:"id" gorm:"primaryKey;autoIncrement"`
-	Name        string                 `json:"name" gorm:"type:varchar(50);not null"`
-	Plan        model.SubscriptionPlan `json:"plan" gorm:"type:varchar(20);uniqueIndex;not null"`
-	Price       int64                  `json:"price" gorm:"not null"` // 月费价格，以分为单位
-	Description string                 `json:"description" gorm:"type:varchar(255)"`
-	QuarterRate float64                `json:"quarterRate" gorm:"default:0.9"` // 季度折扣率
-	YearRate    float64                `json:"yearRate" gorm:"default:0.8"`    // 年度折扣率
-	Configs     *model.PlanConfig      `json:"configs" gorm:"type:jsonb"`
-	CreatedAt   time.Time              `json:"createdAt" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time              `json:"updatedAt" gorm:"autoUpdateTime"`
+	Id                   int64                  `json:"id" gorm:"primaryKey;autoIncrement"`
+	Name                 string                 `json:"name" gorm:"type:varchar(50);not null"`
+	Plan                 model.SubscriptionPlan `json:"plan" gorm:"type:varchar(20);uniqueIndex;not null"`
+	Price                int64                  `json:"price" gorm:"not null"` // 月费价格，以分为单位
+	Description          string                 `json:"description" gorm:"type:varchar(255)"`
+	QuarterRate          float64                `json:"quarterRate" gorm:"default:0.9"` // 季度折扣率
+	YearRate             float64                `json:"yearRate" gorm:"default:0.8"`    // 年度折扣率
+	MaxAgents            int64                  `json:"maxAgents" gorm:"default:0"`
+	MaxWorkflows         int64                  `json:"maxWorkflows" gorm:"default:0"`
+	MaxKnowledgeBaseSize int64                  `json:"maxKnowledgeBaseSize" gorm:"default:0"`
+	CreatedAt            time.Time              `json:"createdAt" gorm:"autoCreateTime"`
+	UpdatedAt            time.Time              `json:"updatedAt" gorm:"autoUpdateTime"`
 }
 
 // TableName 指定表名

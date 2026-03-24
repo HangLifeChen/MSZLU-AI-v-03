@@ -16,4 +16,5 @@ func (u *UserRouter) Register(r *gin.Engine) {
 	userGroup.GET("/", usersHandler.GetUser)
 	userGroup.PUT("/", usersHandler.UpdateUser)
 	userGroup.DELETE("/", usersHandler.DeleteUser)
+
 }

@@ -36,8 +36,10 @@ func (s *service) getCurrentSubscription(ctx context.Context, userID uuid.UUID) 
 	if subscription == nil {
 		// 用户没有订阅记录，返回nil表示无订阅
 		subscription = &UserSubscription{
-			UserId: userID,
-			Plan:   model.FreePlan,
+			UserId:    userID,
+			Plan:      model.FreePlan,
+			StartDate: time.Now(),
+			EndDate:   time.Now().AddDate(0, 1, 0),
 		}
 		subscription.Plan = model.FreePlan
 	}
@@ -95,21 +97,35 @@ func (s *service) updateSubscription(ctx context.Context, userID uuid.UUID, req 
 
 	now := time.Now()
 	var subscription *UserSubscription
-
+	if existingSubscription != nil {
+		subscription = existingSubscription
+	}
+	var endDate time.Time
+	switch req.Duration {
+	case model.Monthly:
+		endDate = now.AddDate(0, 1, 0)
+	case model.Quarterly:
+		endDate = now.AddDate(0, 3, 0)
+	case model.Yearly:
+		endDate = now.AddDate(1, 0, 0)
+	default:
+		endDate = now.AddDate(0, 1, 0)
+	}
 	if existingSubscription == nil {
 		// 创建新订阅
 		subscription = &UserSubscription{
+			Id:        uuid.New(),
 			UserId:    userID,
 			Plan:      req.PlanType,
 			StartDate: now,
-			EndDate:   now.AddDate(0, 1, 0), // 默认一个月
+			EndDate:   endDate,
 		}
 		err = s.repo.createUserSubscription(ctx, subscription)
 	} else {
 		// 更新现有订阅
 		existingSubscription.Plan = req.PlanType
 		existingSubscription.StartDate = now
-		existingSubscription.EndDate = now.AddDate(0, 1, 0)
+		existingSubscription.EndDate = endDate
 		subscription = existingSubscription
 		err = s.repo.updateUserSubscription(ctx, subscription)
 	}
@@ -178,13 +194,15 @@ func (s *service) createWeChatPaymentOrder(ctx context.Context, userID uuid.UUID
 
 	// 创建订单
 	order := &WeChatPaymentOrder{
+		Id:       uuid.New(),
 		UserId:   userID,
 		Plan:     req.PlanType,
 		Duration: req.Duration,
 		Amount:   amount,
 		Paid:     false,
 	}
-
+	//模拟支付成功
+	order.Paid = true
 	err = s.repo.createWeChatPaymentOrder(ctx, order)
 	if err != nil {
 		logs.Errorf("创建微信支付订单失败: %v", err)
@@ -224,6 +242,17 @@ func (s *service) checkPaymentStatus(ctx context.Context, orderID uuid.UUID) (*P
 		return nil, biz.ErrOrderNotFound
 	}
 
+	if order.Paid {
+		// 创建或更新订阅
+		_, err := s.updateSubscription(ctx, order.UserId, UpdateSubscriptionReq{
+			PlanType: order.Plan,
+			Duration: order.Duration,
+		})
+		if err != nil {
+			logs.Errorf("创建或更新订阅失败: %v", err)
+			return nil, err
+		}
+	}
 	// TODO: 如果订单未支付，可以调用微信支付API查询实际状态
 	// 这里暂时直接返回数据库中的状态
 
@@ -240,7 +269,11 @@ func toSubscriptionResponse(subscription *UserSubscription, planConfig *Subscrip
 
 	var configs *model.PlanConfig
 	if planConfig != nil {
-		configs = planConfig.Configs
+		configs = &model.PlanConfig{
+			MaxAgents:            planConfig.MaxAgents,
+			MaxWorkflows:         planConfig.MaxWorkflows,
+			MaxKnowledgeBaseSize: planConfig.MaxKnowledgeBaseSize,
+		}
 	}
 
 	return &SubscriptionResponse{
@@ -262,7 +295,11 @@ func toPlanConfigResponse(config *SubscriptionPlanConfig) *SubscriptionPlanConfi
 	if config == nil {
 		return nil
 	}
-
+	configs := &model.PlanConfig{
+		MaxAgents:            config.MaxAgents,
+		MaxWorkflows:         config.MaxWorkflows,
+		MaxKnowledgeBaseSize: config.MaxKnowledgeBaseSize,
+	}
 	return &SubscriptionPlanConfigResponse{
 		ID:          config.Id,
 		Name:        config.Name,
@@ -271,6 +308,6 @@ func toPlanConfigResponse(config *SubscriptionPlanConfig) *SubscriptionPlanConfi
 		Description: config.Description,
 		QuarterRate: config.QuarterRate,
 		YearRate:    config.YearRate,
-		Configs:     config.Configs,
+		Configs:     configs,
 	}
 }
