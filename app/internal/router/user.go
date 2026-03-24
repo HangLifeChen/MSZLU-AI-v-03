@@ -16,5 +16,6 @@ func (u *UserRouter) Register(r *gin.Engine) {
 	userGroup.GET("/", usersHandler.GetUser)
 	userGroup.PUT("/", usersHandler.UpdateUser)
 	userGroup.DELETE("/", usersHandler.DeleteUser)
-
+	userGroup.GET("/list", usersHandler.ListUsers)
+	userGroup.POST("/upload/avatar", usersHandler.UploadAvatar)
 }
