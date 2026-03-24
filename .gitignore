@@ -1,2 +1,3 @@
 /docker/
 /upload/
+app/__debug_bin*
