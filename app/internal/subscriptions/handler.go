@@ -129,3 +129,54 @@ func (h *Handler) CheckPaymentStatus(c *gin.Context) {
 
 	res.Success(c, resp)
 }
+
+// CreatePlanConfig 创建订阅计划配置
+// POST /api/v1/subscription/admin/plan
+func (h *Handler) CreatePlanConfig(c *gin.Context) {
+	var createReq CreatePlanConfigReq
+	if err := req.JsonParam(c, &createReq); err != nil {
+		return
+	}
+
+	resp, err := h.service.createPlanConfig(c.Request.Context(), createReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+
+	res.Success(c, resp)
+}
+
+// UpdatePlanConfig 更新订阅计划配置
+// PUT /api/v1/subscription/admin/plan
+func (h *Handler) UpdatePlanConfig(c *gin.Context) {
+	var updateReq UpdatePlanConfigReq
+	if err := req.JsonParam(c, &updateReq); err != nil {
+		return
+	}
+
+	resp, err := h.service.updatePlanConfig(c.Request.Context(), updateReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+
+	res.Success(c, resp)
+}
+
+// DeletePlanConfig 删除订阅计划配置
+// DELETE /api/v1/subscription/admin/plan/:id
+func (h *Handler) DeletePlanConfig(c *gin.Context) {
+	var deleteReq DeletePlanConfigReq
+	if err := req.Path(c, "id", &deleteReq.ID); err != nil {
+		return
+	}
+
+	err := h.service.deletePlanConfig(c.Request.Context(), deleteReq.ID)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+
+	res.Success(c, true)
+}

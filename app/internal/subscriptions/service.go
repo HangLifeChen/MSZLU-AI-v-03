@@ -311,3 +311,124 @@ func toPlanConfigResponse(config *SubscriptionPlanConfig) *SubscriptionPlanConfi
 		Configs:     configs,
 	}
 }
+
+// createPlanConfig 创建订阅计划配置
+func (s *service) createPlanConfig(ctx context.Context, req CreatePlanConfigReq) (*SubscriptionPlanConfigResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// 检查计划是否已存在
+	existingConfig, err := s.repo.getPlanConfigByPlan(ctx, req.Plan)
+	if err != nil {
+		logs.Errorf("查询计划配置失败: %v", err)
+		return nil, errs.DBError
+	}
+	if existingConfig != nil {
+		return nil, biz.ErrPlanAlreadyExists
+	}
+
+	// 设置默认值
+	quarterRate := req.QuarterRate
+	if quarterRate <= 0 {
+		quarterRate = 0.9
+	}
+	yearRate := req.YearRate
+	if yearRate <= 0 {
+		yearRate = 0.8
+	}
+
+	config := &SubscriptionPlanConfig{
+		Name:                 req.Name,
+		Plan:                 req.Plan,
+		Price:                req.Price,
+		Description:          req.Description,
+		QuarterRate:          quarterRate,
+		YearRate:             yearRate,
+		MaxAgents:            req.MaxAgents,
+		MaxWorkflows:         req.MaxWorkflows,
+		MaxKnowledgeBaseSize: req.MaxKnowledgeBaseSize,
+	}
+
+	err = s.repo.createPlanConfig(ctx, config)
+	if err != nil {
+		logs.Errorf("创建计划配置失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	return toPlanConfigResponse(config), nil
+}
+
+// updatePlanConfig 更新订阅计划配置
+func (s *service) updatePlanConfig(ctx context.Context, req UpdatePlanConfigReq) (*SubscriptionPlanConfigResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// 获取现有配置
+	var existingConfig *SubscriptionPlanConfig
+	// 通过遍历所有配置来查找
+	configs, err := s.repo.getAllPlanConfigs(ctx)
+	if err != nil {
+		logs.Errorf("查询计划配置失败: %v", err)
+		return nil, errs.DBError
+	}
+	for _, c := range configs {
+		if c.Id == req.ID {
+			existingConfig = c
+			break
+		}
+	}
+	if existingConfig == nil {
+		return nil, biz.ErrPlanNotFound
+	}
+
+	// 更新字段
+	if req.Name != "" {
+		existingConfig.Name = req.Name
+	}
+	if req.Plan != "" {
+		existingConfig.Plan = req.Plan
+	}
+	if req.Price > 0 {
+		existingConfig.Price = req.Price
+	}
+	if req.Description != "" {
+		existingConfig.Description = req.Description
+	}
+	if req.QuarterRate > 0 {
+		existingConfig.QuarterRate = req.QuarterRate
+	}
+	if req.YearRate > 0 {
+		existingConfig.YearRate = req.YearRate
+	}
+	if req.MaxAgents > 0 {
+		existingConfig.MaxAgents = req.MaxAgents
+	}
+	if req.MaxWorkflows > 0 {
+		existingConfig.MaxWorkflows = req.MaxWorkflows
+	}
+	if req.MaxKnowledgeBaseSize > 0 {
+		existingConfig.MaxKnowledgeBaseSize = req.MaxKnowledgeBaseSize
+	}
+
+	err = s.repo.updatePlanConfig(ctx, existingConfig)
+	if err != nil {
+		logs.Errorf("更新计划配置失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	return toPlanConfigResponse(existingConfig), nil
+}
+
+// deletePlanConfig 删除订阅计划配置
+func (s *service) deletePlanConfig(ctx context.Context, id int64) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	err := s.repo.deletePlanConfig(ctx, id)
+	if err != nil {
+		logs.Errorf("删除计划配置失败: %v", err)
+		return errs.DBError
+	}
+
+	return nil
+}

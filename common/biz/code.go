@@ -51,6 +51,7 @@ var (
 	ErrPlanNotFound         = errs.NewError(80001, "订阅计划不存在")
 	ErrSubscriptionNotFound = errs.NewError(80002, "订阅不存在")
 	ErrOrderNotFound        = errs.NewError(80003, "订单不存在")
+	ErrPlanAlreadyExists    = errs.NewError(80004, "订阅计划已存在")
 )
 
 var (

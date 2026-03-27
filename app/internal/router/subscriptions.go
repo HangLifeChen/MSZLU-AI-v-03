@@ -26,4 +26,15 @@ func (u *SubscriptionRouter) Register(engine *gin.Engine) {
 		// 检查支付状态
 		group.GET("/wechat/status/:orderId", handler.CheckPaymentStatus)
 	}
+
+	// 管理员接口 - 订阅计划配置管理
+	adminGroup := engine.Group("/api/v1/subscription/admin")
+	{
+		// 创建订阅计划配置
+		adminGroup.POST("/plan", handler.CreatePlanConfig)
+		// 更新订阅计划配置
+		adminGroup.PUT("/plan", handler.UpdatePlanConfig)
+		// 删除订阅计划配置
+		adminGroup.DELETE("/plan/:id", handler.DeletePlanConfig)
+	}
 }

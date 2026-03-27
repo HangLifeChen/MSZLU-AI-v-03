@@ -80,6 +80,9 @@ type repository interface {
 	// 订阅计划配置相关
 	getAllPlanConfigs(ctx context.Context) ([]*SubscriptionPlanConfig, error)
 	getPlanConfigByPlan(ctx context.Context, plan model.SubscriptionPlan) (*SubscriptionPlanConfig, error)
+	createPlanConfig(ctx context.Context, config *SubscriptionPlanConfig) error
+	updatePlanConfig(ctx context.Context, config *SubscriptionPlanConfig) error
+	deletePlanConfig(ctx context.Context, id int64) error
 
 	// 微信支付订单相关
 	createWeChatPaymentOrder(ctx context.Context, order *WeChatPaymentOrder) error
@@ -152,6 +155,18 @@ func (m *models) getWeChatPaymentOrder(ctx context.Context, orderID uuid.UUID) (
 
 func (m *models) updateWeChatPaymentOrder(ctx context.Context, order *WeChatPaymentOrder) error {
 	return m.db.WithContext(ctx).Save(order).Error
+}
+
+func (m *models) createPlanConfig(ctx context.Context, config *SubscriptionPlanConfig) error {
+	return m.db.WithContext(ctx).Create(config).Error
+}
+
+func (m *models) updatePlanConfig(ctx context.Context, config *SubscriptionPlanConfig) error {
+	return m.db.WithContext(ctx).Save(config).Error
+}
+
+func (m *models) deletePlanConfig(ctx context.Context, id int64) error {
+	return m.db.WithContext(ctx).Where("id = ?", id).Delete(&SubscriptionPlanConfig{}).Error
 }
 
 func newModels(db *gorm.DB) *models {
