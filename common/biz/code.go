@@ -52,3 +52,9 @@ var (
 	ErrSubscriptionNotFound = errs.NewError(80002, "订阅不存在")
 	ErrOrderNotFound        = errs.NewError(80003, "订单不存在")
 )
+
+var (
+	ErrEmployeeNotFound        = errs.NewError(90001, "员工不存在")
+	ErrEmployeeNoExisted       = errs.NewError(90002, "员工编号已存在")
+	ErrEmployeeUsernameExisted = errs.NewError(90003, "员工用户名已存在")
+)
