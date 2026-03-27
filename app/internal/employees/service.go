@@ -122,9 +122,9 @@ func (s *service) updateEmployee(ctx context.Context, operatorID uuid.UUID, req 
 	if req.HireDate != nil {
 		employee.HireDate = req.HireDate
 	}
-	if req.Status != 0 {
-		employee.Status = req.Status
-	}
+
+	employee.Status = req.Status
+
 	if req.Username != "" {
 		employee.Username = req.Username
 	}

@@ -26,7 +26,7 @@ func (m *models) getEmployee(ctx context.Context, id int64) (*model.Employee, er
 }
 
 func (m *models) updateEmployee(ctx context.Context, employee *model.Employee) error {
-	return m.db.WithContext(ctx).Updates(employee).Error
+	return m.db.WithContext(ctx).Select("status").Updates(employee).Error
 }
 
 func (m *models) deleteEmployee(ctx context.Context, id int64) error {
