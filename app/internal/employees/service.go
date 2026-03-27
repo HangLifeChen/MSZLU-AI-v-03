@@ -2,6 +2,7 @@ package employees
 
 import (
 	"common/biz"
+	"common/utils"
 	"context"
 	"model"
 	"time"
@@ -50,7 +51,7 @@ func (s *service) createEmployee(ctx context.Context, operatorID uuid.UUID, req 
 		Email:        req.Email,
 		DepartmentId: req.DepartmentId,
 		Position:     req.Position,
-		HireDate:     req.HireDate,
+		HireDate:     convertCustomTimeToTime(req.HireDate),
 		Status:       req.Status,
 		Username:     req.Username,
 		Password:     req.Password,
@@ -120,7 +121,7 @@ func (s *service) updateEmployee(ctx context.Context, operatorID uuid.UUID, req 
 		employee.Position = req.Position
 	}
 	if req.HireDate != nil {
-		employee.HireDate = req.HireDate
+		employee.HireDate = convertCustomTimeToTime(req.HireDate)
 	}
 
 	employee.Status = req.Status
@@ -205,4 +206,13 @@ func newService() *service {
 	return &service{
 		repo: newModels(database.GetPostgresDB().GormDB),
 	}
+}
+
+// convertCustomTimeToTime 将 *utils.CustomTime 转换为 *time.Time
+func convertCustomTimeToTime(ct *utils.CustomTime) *time.Time {
+	if ct == nil {
+		return nil
+	}
+	t := ct.ToTime()
+	return &t
 }
