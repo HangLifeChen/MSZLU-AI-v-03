@@ -244,3 +244,251 @@ func convertToolToResponse(tool *model.Tool) *ToolResponse {
 		UpdatedAt:   tool.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}
 }
+
+// ============== 管理员服务方法 ==============
+
+// createToolAdmin 管理员创建工具
+func (s *service) createToolAdmin(ctx context.Context, req CreateToolAdminReq) (*ToolDetailResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// 检查工具名称是否已存在
+	toolInfo, err := s.repo.getToolByName(ctx, req.Name)
+	if err != nil {
+		logs.Errorf("get tool by name error: %v", err)
+		return nil, errs.DBError
+	}
+	if toolInfo != nil {
+		return nil, biz.ErrToolNameExisted
+	}
+
+	// 创建工具
+	toolModel := &model.Tool{
+		BaseModel: model.BaseModel{
+			ID: uuid.New(),
+		},
+		ToolType:    req.ToolType,
+		IsEnable:    req.IsEnable,
+		CreatorID:   req.CreatorID,
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	// 根据工具类型处理
+	if req.ToolType == model.McpToolType {
+		if req.McpConfig != nil {
+			toolModel.McpConfig = req.McpConfig
+		}
+	} else {
+		// 系统工具
+		invokeParamTool := tools.FindTool(req.Name)
+		if invokeParamTool == nil {
+			return nil, biz.ErrToolNotExisted
+		}
+		info, err := invokeParamTool.Info(ctx)
+		if err != nil {
+			logs.Errorf("get tool info error: %v", err)
+			return nil, errs.DBError
+		}
+		toolModel.Name = info.Name
+		toolModel.Description = info.Desc
+		toolModel.ParametersSchema = invokeParamTool.Params()
+	}
+
+	err = s.repo.createTool(ctx, toolModel)
+	if err != nil {
+		logs.Errorf("create tool error: %v", err)
+		return nil, errs.DBError
+	}
+
+	// 获取创建者信息
+	user, err := s.repo.getUserByID(ctx, toolModel.CreatorID)
+	if err != nil {
+		logs.Errorf("get user by id error: %v", err)
+	}
+
+	return ToToolDetailResponse(toolModel, user), nil
+}
+
+// listToolsAdmin 管理员查询工具列表
+func (s *service) listToolsAdmin(ctx context.Context, req ListToolsAdminReq) (*ListToolsAdminResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// 构建过滤条件
+	filter := adminToolFilter{
+		Name:     req.Name,
+		ToolType: req.Type,
+		IsEnable: req.IsEnable,
+	}
+	if req.CreatorID != uuid.Nil {
+		filter.CreatorID = req.CreatorID
+	}
+	if req.PageSize > 0 {
+		filter.Limit = req.PageSize
+		filter.Offset = (req.Page - 1) * req.PageSize
+	}
+
+	// 查询工具列表
+	toolList, total, err := s.repo.listToolsAdmin(ctx, filter)
+	if err != nil {
+		logs.Errorf("list tools error: %v", err)
+		return nil, errs.DBError
+	}
+
+	// 收集所有创建者ID
+	creatorIDs := make([]uuid.UUID, 0)
+	creatorIDSet := make(map[uuid.UUID]bool)
+	for _, tool := range toolList {
+		if !creatorIDSet[tool.CreatorID] {
+			creatorIDs = append(creatorIDs, tool.CreatorID)
+			creatorIDSet[tool.CreatorID] = true
+		}
+	}
+
+	// 批量获取创建者信息
+	userMap, err := s.repo.getUsersByIDs(ctx, creatorIDs)
+	if err != nil {
+		logs.Errorf("get users by ids error: %v", err)
+	}
+
+	// 转换响应
+	list := make([]*ToolListResponse, 0, len(toolList))
+	for _, tool := range toolList {
+		user := userMap[tool.CreatorID]
+		list = append(list, ToToolListResponse(tool, user))
+	}
+
+	return &ListToolsAdminResponse{
+		List:        list,
+		Total:       total,
+		CurrentPage: int64(req.Page),
+		PageSize:    int64(req.PageSize),
+	}, nil
+}
+
+// getToolAdmin 管理员获取工具详情
+func (s *service) getToolAdmin(ctx context.Context, id uuid.UUID) (*ToolDetailResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	tool, err := s.repo.getToolByID(ctx, id)
+	if err != nil {
+		logs.Errorf("get tool error: %v", err)
+		return nil, errs.DBError
+	}
+	if tool == nil {
+		return nil, biz.ErrToolNotExisted
+	}
+
+	// 获取创建者信息
+	user, err := s.repo.getUserByID(ctx, tool.CreatorID)
+	if err != nil {
+		logs.Errorf("get user error: %v", err)
+	}
+
+	return ToToolDetailResponse(tool, user), nil
+}
+
+// updateToolAdmin 管理员更新工具
+func (s *service) updateToolAdmin(ctx context.Context, req UpdateToolAdminReq) (*ToolDetailResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// 获取工具
+	toolInfo, err := s.repo.getToolByID(ctx, req.ID)
+	if err != nil {
+		logs.Errorf("get tool error: %v", err)
+		return nil, errs.DBError
+	}
+	if toolInfo == nil {
+		return nil, biz.ErrToolNotExisted
+	}
+
+	// 检查名称是否重复
+	if req.Name != toolInfo.Name {
+		existTool, err := s.repo.getToolByName(ctx, req.Name)
+		if err != nil {
+			logs.Errorf("get tool by name error: %v", err)
+			return nil, errs.DBError
+		}
+		if existTool != nil {
+			return nil, biz.ErrToolNameExisted
+		}
+	}
+
+	// 更新字段
+	toolInfo.Name = req.Name
+	toolInfo.Description = req.Description
+	toolInfo.IsEnable = req.IsEnable
+	if req.ToolType == model.McpToolType && req.McpConfig != nil {
+		toolInfo.McpConfig = req.McpConfig
+	}
+
+	err = s.repo.updateTool(ctx, toolInfo)
+	if err != nil {
+		logs.Errorf("update tool error: %v", err)
+		return nil, errs.DBError
+	}
+
+	// 获取创建者信息
+	user, err := s.repo.getUserByID(ctx, toolInfo.CreatorID)
+	if err != nil {
+		logs.Errorf("get user error: %v", err)
+	}
+
+	return ToToolDetailResponse(toolInfo, user), nil
+}
+
+// deleteToolAdmin 管理员删除工具
+func (s *service) deleteToolAdmin(ctx context.Context, id uuid.UUID) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// 检查工具是否存在
+	tool, err := s.repo.getToolByID(ctx, id)
+	if err != nil {
+		logs.Errorf("get tool error: %v", err)
+		return errs.DBError
+	}
+	if tool == nil {
+		return biz.ErrToolNotExisted
+	}
+
+	err = s.repo.deleteToolAdmin(ctx, id)
+	if err != nil {
+		logs.Errorf("delete tool error: %v", err)
+		return errs.DBError
+	}
+	return nil
+}
+
+// getToolStats 获取工具统计信息
+func (s *service) getToolStats(ctx context.Context) (*ToolStats, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	stats := &ToolStats{}
+
+	// 获取所有工具
+	tools, total, err := s.repo.listToolsAdmin(ctx, adminToolFilter{})
+	if err != nil {
+		return nil, fmt.Errorf("获取工具列表失败: %w", err)
+	}
+
+	stats.TotalTools = total
+	for _, tool := range tools {
+		if tool.IsEnable {
+			stats.EnabledTools++
+		} else {
+			stats.DisabledTools++
+		}
+		if tool.ToolType == model.McpToolType {
+			stats.McpTools++
+		} else {
+			stats.SystemTools++
+		}
+	}
+
+	return stats, nil
+}

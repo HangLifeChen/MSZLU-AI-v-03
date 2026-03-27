@@ -21,4 +21,16 @@ func (t *ToolRouter) Register(r *gin.Engine) {
 		toolsGroup.POST("/:id/test", toolsHandler.TestTool)
 		toolsGroup.GET("/mcp/:mcpId/tools", toolsHandler.GetMcpTools)
 	}
+
+	// 管理员路由
+	adminToolsGroup := r.Group("/api/v1/admin/tools")
+	{
+		adminToolsHandler := tools.NewHandler()
+		adminToolsGroup.POST("/", adminToolsHandler.CreateToolAdmin)
+		adminToolsGroup.GET("/", adminToolsHandler.ListToolsAdmin)
+		adminToolsGroup.GET("/stats", adminToolsHandler.GetToolStats)
+		adminToolsGroup.GET("/:id", adminToolsHandler.GetToolAdmin)
+		adminToolsGroup.PUT("/:id", adminToolsHandler.UpdateToolAdmin)
+		adminToolsGroup.DELETE("/:id", adminToolsHandler.DeleteToolAdmin)
+	}
 }
