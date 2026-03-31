@@ -11,6 +11,7 @@ import (
 	"github.com/mszlu521/thunder/database"
 	"github.com/mszlu521/thunder/errs"
 	"github.com/mszlu521/thunder/logs"
+	"gorm.io/gorm/logger"
 )
 
 type service struct {
@@ -204,7 +205,7 @@ func (s *service) listEmployees(ctx context.Context, operatorID uuid.UUID, req L
 
 func newService() *service {
 	return &service{
-		repo: newModels(database.GetPostgresDB().GormDB),
+		repo: newModels(database.GetPostgresDB().GormDB.Logger.LogMode(logger.Info)),
 	}
 }
 
