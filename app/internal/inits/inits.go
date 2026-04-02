@@ -11,11 +11,14 @@ import (
 	"github.com/mszlu521/thunder/logs"
 	"github.com/mszlu521/thunder/server"
 	"github.com/mszlu521/thunder/tools/jwt"
+	"gorm.io/gorm/logger"
 )
 
 func Init(s *server.Server, conf *config.Config) {
 	//初始化数据库
 	database.InitPostgres(conf.DB.Postgres)
+	d := database.GetPostgresDB().GormDB
+	d.Logger = logger.Default.LogMode(logger.Info)
 	logs.Infof("数据库初始化完成")
 	//初始化redis
 	database.InitRedis(conf.DB.Redis)

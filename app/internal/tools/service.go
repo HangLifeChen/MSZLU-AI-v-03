@@ -231,6 +231,7 @@ func (s *service) getMcpTools(ctx context.Context, userId uuid.UUID, toolId uuid
 	return toolList, nil
 }
 func newService() *service {
+
 	return &service{
 		repo: newModels(database.GetPostgresDB().GormDB),
 	}
