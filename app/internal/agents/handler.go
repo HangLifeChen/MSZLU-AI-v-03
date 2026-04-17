@@ -410,3 +410,86 @@ func NewHandler() *Handler {
 		service: newService(),
 	}
 }
+
+func (h *Handler) CreateAgentAdmin(c *gin.Context) {
+	var createReq CreateAgentAdminReq
+	if err := req.JsonParam(c, &createReq); err != nil {
+		return
+	}
+
+	resp, err := h.service.createAgentAdmin(c.Request.Context(), createReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, resp)
+}
+
+func (h *Handler) ListAgentsAdmin(c *gin.Context) {
+	var listReq ListAgentsAdminReq
+	if err := req.QueryParam(c, &listReq); err != nil {
+		return
+	}
+
+	if listReq.Page <= 0 {
+		listReq.Page = 1
+	}
+	if listReq.PageSize <= 0 {
+		listReq.PageSize = 10
+	}
+
+	resp, err := h.service.listAgentsAdmin(c.Request.Context(), listReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, resp)
+}
+
+func (h *Handler) GetAgentAdmin(c *gin.Context) {
+	var id uuid.UUID
+	if err := req.Path(c, "id", &id); err != nil {
+		return
+	}
+
+	resp, err := h.service.getAgentAdmin(c.Request.Context(), id)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, resp)
+}
+
+func (h *Handler) UpdateAgentAdmin(c *gin.Context) {
+	var id uuid.UUID
+	if err := req.Path(c, "id", &id); err != nil {
+		return
+	}
+
+	var updateReq UpdateAgentAdminReq
+	if err := req.JsonParam(c, &updateReq); err != nil {
+		return
+	}
+	updateReq.ID = id
+
+	resp, err := h.service.updateAgentAdmin(c.Request.Context(), updateReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, resp)
+}
+
+func (h *Handler) DeleteAgentAdmin(c *gin.Context) {
+	var id uuid.UUID
+	if err := req.Path(c, "id", &id); err != nil {
+		return
+	}
+
+	err := h.service.deleteAgentAdmin(c.Request.Context(), id)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, nil)
+}

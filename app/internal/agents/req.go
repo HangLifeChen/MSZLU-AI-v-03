@@ -76,3 +76,35 @@ type createSessionRequest struct {
 type listSessionsRequest struct {
 	AgentID string `json:"agentId" form:"agentId"`
 }
+
+type CreateAgentAdminReq struct {
+	Name            string            `json:"name" binding:"required"`
+	Description     string            `json:"description"`
+	Status          model.AgentStatus `json:"status"`
+	SystemPrompt    string            `json:"systemPrompt"`
+	ModelProvider   string            `json:"modelProvider"`
+	ModelName       string            `json:"modelName"`
+	ModelParameters model.JSON        `json:"modelParameters"`
+	OpeningDialogue string            `json:"openingDialogue"`
+	CreatorID       uuid.UUID         `json:"creatorId" binding:"required"`
+}
+
+type UpdateAgentAdminReq struct {
+	ID              uuid.UUID         `json:"id" binding:"required"`
+	Name            string            `json:"name"`
+	Description     string            `json:"description"`
+	Status          model.AgentStatus `json:"status"`
+	SystemPrompt    string            `json:"systemPrompt"`
+	ModelProvider   string            `json:"modelProvider"`
+	ModelName       string            `json:"modelName"`
+	ModelParameters model.JSON        `json:"modelParameters"`
+	OpeningDialogue string            `json:"openingDialogue"`
+}
+
+type ListAgentsAdminReq struct {
+	Name      string            `json:"name" form:"name"`
+	Status    model.AgentStatus `json:"status" form:"status"`
+	CreatorID uuid.UUID         `json:"creatorId" form:"creatorId"`
+	Page      int               `json:"page" form:"page"`
+	PageSize  int               `json:"pageSize" form:"pageSize"`
+}

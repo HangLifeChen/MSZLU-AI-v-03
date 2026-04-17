@@ -37,4 +37,9 @@ type repository interface {
 	deleteSessionMessages(ctx context.Context, sessionId uuid.UUID) error
 	getSession(ctx context.Context, sessionId *uuid.UUID) (*model.ChatSession, error)
 	saveChatMessage(ctx context.Context, chatMessage *model.ChatMessage) error
+	getAgentByID(ctx context.Context, id uuid.UUID) (*model.Agent, error)
+	listAgentsAdmin(ctx context.Context, filter AdminAgentFilter) ([]*model.Agent, int64, error)
+	getUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
+	getUsersByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*model.User, error)
+	createAgentAdmin(ctx context.Context, agent *model.Agent) error
 }

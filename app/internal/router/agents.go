@@ -33,4 +33,15 @@ func (u *AgentRouter) Register(engine *gin.Engine) {
 		agentsGroup.GET("/sessions/:sessionId/messages", agentsHandler.GetSessionMessages)
 		agentsGroup.DELETE("/sessions/:sessionId", agentsHandler.DeleteSession)
 	}
+
+	// 管理员接口 - 智能体管理
+	adminGroup := engine.Group("/api/v1/agent/admin")
+	{
+		adminAgentsHandler := agents.NewHandler()
+		adminGroup.POST("/", adminAgentsHandler.CreateAgentAdmin)
+		adminGroup.GET("/", adminAgentsHandler.ListAgentsAdmin)
+		adminGroup.GET("/:id", adminAgentsHandler.GetAgentAdmin)
+		adminGroup.PUT("/:id", adminAgentsHandler.UpdateAgentAdmin)
+		adminGroup.DELETE("/:id", adminAgentsHandler.DeleteAgentAdmin)
+	}
 }

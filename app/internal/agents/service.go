@@ -1402,6 +1402,191 @@ func (s *service) buildSkills(agent *model.Agent) ([]adk.AgentMiddleware, error)
 	}
 	return []adk.AgentMiddleware{}, nil
 }
+func (s *service) createAgentAdmin(ctx context.Context, req CreateAgentAdminReq) (*AgentDetailAdminResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	agent := &model.Agent{
+		BaseModel: model.BaseModel{
+			ID: uuid.New(),
+		},
+		CreatorID:          req.CreatorID,
+		Name:               req.Name,
+		Description:        req.Description,
+		Status:             req.Status,
+		SystemPrompt:       req.SystemPrompt,
+		ModelProvider:      req.ModelProvider,
+		ModelName:          req.ModelName,
+		ModelParameters:    req.ModelParameters,
+		OpeningDialogue:    req.OpeningDialogue,
+		SuggestedQuestions: model.JSON{},
+		Version:            1,
+		Visibility:         model.Private,
+		InvocationCount:    0,
+	}
+
+	err := s.repo.createAgentAdmin(ctx, agent)
+	if err != nil {
+		logs.Errorf("创建智能体(管理员)失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	user, err := s.repo.getUserByID(ctx, req.CreatorID)
+	if err != nil {
+		logs.Errorf("查询创建者信息失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	return toAgentDetailAdminResponse(agent, user), nil
+}
+
+func (s *service) listAgentsAdmin(ctx context.Context, req ListAgentsAdminReq) (*ListAgentsAdminResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	filter := AdminAgentFilter{
+		Name:      req.Name,
+		Status:    req.Status,
+		CreatorID: req.CreatorID,
+		Limit:     req.PageSize,
+		Offset:    (req.Page - 1) * req.PageSize,
+	}
+
+	agents, total, err := s.repo.listAgentsAdmin(ctx, filter)
+	if err != nil {
+		logs.Errorf("查询智能体列表(管理员)失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	var creatorIDs []uuid.UUID
+	for _, a := range agents {
+		creatorIDs = append(creatorIDs, a.CreatorID)
+	}
+	userMap, err := s.repo.getUsersByIDs(ctx, creatorIDs)
+	if err != nil {
+		logs.Errorf("批量查询用户信息失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	var list []*AgentListAdminResponse
+	for _, a := range agents {
+		list = append(list, toAgentListAdminResponse(a, userMap[a.CreatorID]))
+	}
+
+	return &ListAgentsAdminResponse{
+		List:        list,
+		Total:       total,
+		CurrentPage: req.Page,
+		PageSize:    req.PageSize,
+	}, nil
+}
+
+func (s *service) getAgentAdmin(ctx context.Context, id uuid.UUID) (*AgentDetailAdminResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	agent, err := s.repo.getAgentByID(ctx, id)
+	if err != nil {
+		logs.Errorf("查询智能体详情(管理员)失败: %v", err)
+		return nil, errs.DBError
+	}
+	if agent == nil {
+		return nil, biz.AgentNotFound
+	}
+
+	user, err := s.repo.getUserByID(ctx, agent.CreatorID)
+	if err != nil {
+		logs.Errorf("查询创建者信息失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	return toAgentDetailAdminResponse(agent, user), nil
+}
+
+func (s *service) updateAgentAdmin(ctx context.Context, req UpdateAgentAdminReq) (*AgentDetailAdminResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	agent, err := s.repo.getAgentByID(ctx, req.ID)
+	if err != nil {
+		logs.Errorf("查询智能体(管理员)失败: %v", err)
+		return nil, errs.DBError
+	}
+	if agent == nil {
+		return nil, biz.AgentNotFound
+	}
+
+	if req.Name != "" {
+		agent.Name = req.Name
+	}
+	if req.Description != "" {
+		agent.Description = req.Description
+	}
+	if req.Status != "" {
+		agent.Status = req.Status
+	}
+	if req.SystemPrompt != "" {
+		agent.SystemPrompt = req.SystemPrompt
+	}
+	if req.ModelProvider != "" {
+		agent.ModelProvider = req.ModelProvider
+	}
+	if req.ModelName != "" {
+		agent.ModelName = req.ModelName
+	}
+	if req.ModelParameters != nil {
+		agent.ModelParameters = req.ModelParameters
+	}
+	if req.OpeningDialogue != "" {
+		agent.OpeningDialogue = req.OpeningDialogue
+	}
+
+	err = s.repo.updateAgent(ctx, agent)
+	if err != nil {
+		logs.Errorf("更新智能体(管理员)失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	user, err := s.repo.getUserByID(ctx, agent.CreatorID)
+	if err != nil {
+		logs.Errorf("查询创建者信息失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	return toAgentDetailAdminResponse(agent, user), nil
+}
+
+func (s *service) deleteAgentAdmin(ctx context.Context, id uuid.UUID) error {
+	err := s.repo.transaction(ctx, func(tx *gorm.DB) error {
+		err := s.repo.deleteAgent(ctx, id)
+		if err != nil {
+			return err
+		}
+		err = s.repo.deleteAgentTools(ctx, id)
+		if err != nil {
+			return err
+		}
+		err = s.repo.deleteAgentKnowledgeBaseByAgentId(ctx, id)
+		if err != nil {
+			return err
+		}
+		err = s.repo.deleteAgentAgentByAgentId(ctx, id)
+		if err != nil {
+			return err
+		}
+		err = s.repo.deleteAgentWorkflowByAgentId(ctx, id)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		logs.Errorf("deleteAgentAdmin 删除agent失败: %v", err)
+		return errs.DBError
+	}
+	return nil
+}
+
 func newService() *service {
 	return &service{
 		repo:            newModels(database.GetPostgresDB().GormDB),

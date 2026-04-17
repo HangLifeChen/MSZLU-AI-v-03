@@ -184,6 +184,75 @@ type AgentFilter struct {
 	Offset int
 }
 
+type AdminAgentFilter struct {
+	Name      string
+	Status    model.AgentStatus
+	CreatorID uuid.UUID
+	Limit     int
+	Offset    int
+}
+
+func (m *models) getAgentByID(ctx context.Context, id uuid.UUID) (*model.Agent, error) {
+	var agent model.Agent
+	err := m.db.WithContext(ctx).
+		Preload("Tools").
+		Preload("KnowledgeBases").
+		Preload("Agents").
+		Preload("Workflows").
+		Where("id = ?", id).First(&agent).Error
+	if gorms.IsRecordNotFoundError(err) {
+		return nil, nil
+	}
+	return &agent, err
+}
+
+func (m *models) listAgentsAdmin(ctx context.Context, filter AdminAgentFilter) ([]*model.Agent, int64, error) {
+	var agents []*model.Agent
+	var count int64
+	query := m.db.WithContext(ctx).Model(&model.Agent{})
+	if filter.Name != "" {
+		query = query.Where("name like ?", "%"+filter.Name+"%")
+	}
+	if filter.Status != "" {
+		query = query.Where("status = ?", filter.Status)
+	}
+	if filter.CreatorID != uuid.Nil {
+		query = query.Where("creator_id = ?", filter.CreatorID)
+	}
+	query = query.Count(&count)
+	query = query.Limit(filter.Limit).Offset(filter.Offset)
+	return agents, count, query.Find(&agents).Error
+}
+
+func (m *models) getUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
+	var user model.User
+	err := m.db.WithContext(ctx).Where("id = ?", id).First(&user).Error
+	if gorms.IsRecordNotFoundError(err) {
+		return nil, nil
+	}
+	return &user, err
+}
+
+func (m *models) getUsersByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*model.User, error) {
+	var users []*model.User
+	if len(ids) == 0 {
+		return make(map[uuid.UUID]*model.User), nil
+	}
+	err := m.db.WithContext(ctx).Where("id IN ?", ids).Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	userMap := make(map[uuid.UUID]*model.User)
+	for _, user := range users {
+		userMap[user.Id] = user
+	}
+	return userMap, nil
+}
+
+func (m *models) createAgentAdmin(ctx context.Context, agent *model.Agent) error {
+	return m.db.WithContext(ctx).Create(agent).Error
+}
+
 func (m *models) createAgent(ctx context.Context, agent *model.Agent) error {
 	return m.db.WithContext(ctx).Create(agent).Error
 }
