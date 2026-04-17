@@ -36,5 +36,7 @@ func (u *SubscriptionRouter) Register(engine *gin.Engine) {
 		adminGroup.PUT("/plan", handler.UpdatePlanConfig)
 		// 删除订阅计划配置
 		adminGroup.DELETE("/plan/:id", handler.DeletePlanConfig)
+		// 获取所有订阅计划
+		adminGroup.GET("/plans", handler.GetSubscriptionPlans)
 	}
 }
