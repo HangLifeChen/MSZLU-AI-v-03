@@ -48,10 +48,16 @@ func (m *models) listUsers(ctx context.Context, filter UserFilter) ([]*model.Use
 	if filter.Status != 0 {
 		query = query.Where("status = ?", filter.Status)
 	}
+	if err := query.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
 	if filter.Page > 0 && filter.PageSize > 0 {
 		query = query.Limit(filter.PageSize).Offset((filter.Page - 1) * filter.PageSize)
 	}
-	return users, count, query.Find(&users).Error
+	if err := query.Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+	return users, count, nil
 }
 
 func (m *models) getUserByEmail(ctx context.Context, email string) (*model.User, error) {

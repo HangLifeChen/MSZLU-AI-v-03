@@ -50,6 +50,7 @@ func Init(s *server.Server, conf *config.Config) {
 		&router.SettingsRouter{},
 		&router.UserRouter{},
 		&router.EmployeeRouter{},
+		&router.AdminRouter{},
 	)
 	// 注册事件处理器
 	eventRouter := &router.Event{}

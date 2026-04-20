@@ -18,4 +18,8 @@ func (u *UserRouter) Register(r *gin.Engine) {
 	userGroup.DELETE("/", usersHandler.DeleteUser)
 	userGroup.GET("/list", usersHandler.ListUsers)
 	userGroup.POST("/upload/avatar", usersHandler.UploadAvatar)
+
+	adminGroup := r.Group("/api/user/admin")
+	adminHandler := users.NewHandler()
+	adminGroup.GET("/list", adminHandler.ListUsersAdmin)
 }

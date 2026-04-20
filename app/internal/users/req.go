@@ -34,3 +34,11 @@ type ListUsersReq struct {
 	Page     int              `json:"page" form:"page"`
 	PageSize int              `json:"pageSize" form:"pageSize"`
 }
+
+type ListUsersAdminReq struct {
+	Username string           `json:"username" form:"username"`
+	Email    string           `json:"email" form:"email"`
+	Status   model.StatusEnum `json:"status" form:"status"`
+	Page     int              `json:"page" form:"page"`
+	PageSize int              `json:"pageSize" form:"pageSize"`
+}

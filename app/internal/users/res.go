@@ -24,6 +24,13 @@ type ListUserResponse struct {
 	Total int64           `json:"total"`
 }
 
+type ListUsersAdminResponse struct {
+	List        []*UserResponse `json:"list"`
+	Total       int64           `json:"total"`
+	CurrentPage int             `json:"currentPage"`
+	PageSize    int             `json:"pageSize"`
+}
+
 type UploadAvatarResponse struct {
 	URL string `json:"url"`
 }

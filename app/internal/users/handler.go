@@ -113,6 +113,27 @@ func (h *Handler) UploadAvatar(c *gin.Context) {
 	res.Success(c, resp)
 }
 
+func (h *Handler) ListUsersAdmin(c *gin.Context) {
+	var listReq ListUsersAdminReq
+	if err := req.QueryParam(c, &listReq); err != nil {
+		return
+	}
+
+	if listReq.Page <= 0 {
+		listReq.Page = 1
+	}
+	if listReq.PageSize <= 0 {
+		listReq.PageSize = 10
+	}
+
+	resp, err := h.service.listUsersAdmin(c.Request.Context(), listReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, resp)
+}
+
 func NewHandler() *Handler {
 	return &Handler{
 		service: newService(),

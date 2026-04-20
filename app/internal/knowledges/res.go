@@ -44,13 +44,15 @@ type SearchResponse struct {
 }
 
 type SearchResult struct {
-	Id         uuid.UUID       `json:"id"`
-	DocumentId uuid.UUID       `json:"documentId"`
-	Content    string          `json:"content"`
-	Score      float64         `json:"score"`
-	Metadata   model.JSON      `json:"metadata"`
-	Position   int             `json:"position"`
-	Document   *model.Document `json:"document";gorm:"foreignKey:DocumentId;references:Id"`
+	Id           uuid.UUID  `json:"id"`
+	DocumentName string     `json:"documentName"`
+	DocumentId   uuid.UUID  `json:"documentId"`
+	Content      string     `json:"content"`
+	Score        float64    `json:"score"`
+	FileType     string     `json:"fileType"`
+	Metadata     model.JSON `json:"metadata"`
+	Position     int        `json:"position"`
+	CreateAt     time.Time  `json:"createAt"`
 }
 
 type DocumentContent struct {

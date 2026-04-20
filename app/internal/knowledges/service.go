@@ -701,13 +701,21 @@ func (s *service) searchKnowledgeBase(ctx context.Context, userId uuid.UUID, kbI
 	}
 	results := make([]*SearchResult, 0, len(parentChunks))
 	for i, chunk := range parentChunks {
+		doc, err := s.repo.getDocument(ctx, userId, kbId, chunk.DocumentID)
+		if err != nil {
+			logs.Errorf("get document error: %v", err)
+			continue
+		}
 		results = append(results, &SearchResult{
-			Content:    chunk.Content,
-			DocumentId: chunk.DocumentID,
-			Id:         chunk.ID,
-			Metadata:   chunk.MetaInfo,
-			Position:   i,
-			Score:      parentIdMap[chunk.ID.String()],
+			Content:      chunk.Content,
+			DocumentId:   chunk.DocumentID,
+			DocumentName: doc.Name,
+			FileType:     doc.FileType,
+			Id:           chunk.ID,
+			Metadata:     chunk.MetaInfo,
+			Position:     i,
+			Score:        parentIdMap[chunk.ID.String()],
+			CreateAt:     chunk.CreatedAt,
 		})
 	}
 	return &SearchResponse{

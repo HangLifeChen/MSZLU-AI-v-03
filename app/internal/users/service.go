@@ -187,6 +187,37 @@ func (s *service) listUsers(ctx context.Context, operatorID uuid.UUID, req ListU
 	return &ListUserResponse{Users: list, Total: count}, nil
 }
 
+func (s *service) listUsersAdmin(ctx context.Context, listReq ListUsersAdminReq) (*ListUsersAdminResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	filter := UserFilter{
+		Username: listReq.Username,
+		Email:    listReq.Email,
+		Status:   listReq.Status,
+		Page:     listReq.Page,
+		PageSize: listReq.PageSize,
+	}
+
+	users, count, err := s.repo.listUsers(ctx, filter)
+	if err != nil {
+		logs.Errorf("查询用户列表失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	var list []*UserResponse
+	for _, user := range users {
+		list = append(list, toUserResponse(user))
+	}
+
+	return &ListUsersAdminResponse{
+		List:        list,
+		Total:       count,
+		CurrentPage: filter.Page,
+		PageSize:    filter.PageSize,
+	}, nil
+}
+
 func newService() *service {
 	return &service{
 		repo: newModels(database.GetPostgresDB().GormDB),
