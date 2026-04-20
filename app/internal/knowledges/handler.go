@@ -247,3 +247,86 @@ func NewHandler() *Handler {
 		service: newService(),
 	}
 }
+
+func (h *Handler) CreateKnowledgeBaseAdmin(c *gin.Context) {
+	var createReq CreateKnowledgeBaseAdminReq
+	if err := req.JsonParam(c, &createReq); err != nil {
+		return
+	}
+
+	resp, err := h.service.createKnowledgeBaseAdmin(c.Request.Context(), createReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, resp)
+}
+
+func (h *Handler) ListKnowledgeBasesAdmin(c *gin.Context) {
+	var listReq ListKnowledgeBasesAdminReq
+	if err := req.QueryParam(c, &listReq); err != nil {
+		return
+	}
+
+	if listReq.Page <= 0 {
+		listReq.Page = 1
+	}
+	if listReq.PageSize <= 0 {
+		listReq.PageSize = 10
+	}
+
+	resp, err := h.service.listKnowledgeBasesAdmin(c.Request.Context(), listReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, resp)
+}
+
+func (h *Handler) GetKnowledgeBaseAdmin(c *gin.Context) {
+	var id uuid.UUID
+	if err := req.Path(c, "id", &id); err != nil {
+		return
+	}
+
+	resp, err := h.service.getKnowledgeBaseAdmin(c.Request.Context(), id)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, resp)
+}
+
+func (h *Handler) UpdateKnowledgeBaseAdmin(c *gin.Context) {
+	var id uuid.UUID
+	if err := req.Path(c, "id", &id); err != nil {
+		return
+	}
+
+	var updateReq UpdateKnowledgeBaseAdminReq
+	if err := req.JsonParam(c, &updateReq); err != nil {
+		return
+	}
+	updateReq.ID = id
+
+	resp, err := h.service.updateKnowledgeBaseAdmin(c.Request.Context(), updateReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, resp)
+}
+
+func (h *Handler) DeleteKnowledgeBaseAdmin(c *gin.Context) {
+	var id uuid.UUID
+	if err := req.Path(c, "id", &id); err != nil {
+		return
+	}
+
+	err := h.service.deleteKnowledgeBaseAdmin(c.Request.Context(), id)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+	res.Success(c, nil)
+}

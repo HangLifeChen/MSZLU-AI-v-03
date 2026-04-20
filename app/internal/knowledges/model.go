@@ -155,3 +155,67 @@ func newModels(db *gorm.DB) *models {
 		db: db,
 	}
 }
+
+type AdminKnowledgeBaseFilter struct {
+	Name      string
+	Search    string
+	CreatorID string
+	Status    string
+	Limit     int
+	Offset    int
+}
+
+func (m *models) listKnowledgeBasesAdmin(ctx context.Context, filter AdminKnowledgeBaseFilter) ([]*model.KnowledgeBase, int64, error) {
+	var kbs []*model.KnowledgeBase
+	var count int64
+	query := m.db.WithContext(ctx).Model(&model.KnowledgeBase{})
+	if filter.Name != "" {
+		query = query.Where("name LIKE ?", "%"+filter.Name+"%")
+	}
+	if filter.Search != "" {
+		query = query.Where("name LIKE ?", "%"+filter.Search+"%")
+	}
+	if filter.CreatorID != "" {
+		query = query.Where("creator_id = ?", filter.CreatorID)
+	}
+	if filter.Status != "" {
+		query = query.Where("status = ?", filter.Status)
+	}
+	query = query.Count(&count)
+	query = query.Limit(filter.Limit).Offset(filter.Offset)
+	return kbs, count, query.Find(&kbs).Error
+}
+
+func (m *models) getKnowledgeBaseByID(ctx context.Context, id uuid.UUID) (*model.KnowledgeBase, error) {
+	var kb model.KnowledgeBase
+	err := m.db.WithContext(ctx).Where("id = ?", id).First(&kb).Error
+	if gorms.IsRecordNotFoundError(err) {
+		return nil, nil
+	}
+	return &kb, err
+}
+
+func (m *models) getUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
+	var user model.User
+	err := m.db.WithContext(ctx).Where("id = ?", id).First(&user).Error
+	if gorms.IsRecordNotFoundError(err) {
+		return nil, nil
+	}
+	return &user, err
+}
+
+func (m *models) getUsersByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*model.User, error) {
+	var users []*model.User
+	if len(ids) == 0 {
+		return make(map[uuid.UUID]*model.User), nil
+	}
+	err := m.db.WithContext(ctx).Where("id IN ?", ids).Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	userMap := make(map[uuid.UUID]*model.User)
+	for _, user := range users {
+		userMap[user.Id] = user
+	}
+	return userMap, nil
+}

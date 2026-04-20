@@ -29,6 +29,17 @@ func (u *KnowledgeBaseRouter) Register(engine *gin.Engine) {
 		//POST /api/v1/knowledge/{id}/documents/{documentId}/reindex
 		knowledgesGroup.POST("/:id/documents/:documentId/reindex", knowledgesHandler.ReindexDocument)
 	}
+
+	// 管理员接口 - 知识库管理
+	adminGroup := engine.Group("/api/v1/knowledge/admin")
+	{
+		adminHandler := knowledges.NewHandler()
+		adminGroup.POST("/", adminHandler.CreateKnowledgeBaseAdmin)
+		adminGroup.GET("/", adminHandler.ListKnowledgeBasesAdmin)
+		adminGroup.GET("/:id", adminHandler.GetKnowledgeBaseAdmin)
+		adminGroup.PUT("/:id", adminHandler.UpdateKnowledgeBaseAdmin)
+		adminGroup.DELETE("/:id", adminHandler.DeleteKnowledgeBaseAdmin)
+	}
 }
 
 func (u *KnowledgeBaseRouter) Close() error {

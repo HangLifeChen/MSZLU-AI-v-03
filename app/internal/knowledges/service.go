@@ -1645,3 +1645,189 @@ func (s *service) Close() error {
 	}
 	return nil
 }
+
+func (s *service) createKnowledgeBaseAdmin(ctx context.Context, req CreateKnowledgeBaseAdminReq) (*KnowledgeBaseDetailAdminResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	kb := &model.KnowledgeBase{
+		BaseModel: model.BaseModel{
+			ID: uuid.New(),
+		},
+		CreatorID:              req.CreatorID,
+		Name:                   req.Name,
+		Description:            req.Description,
+		ChatModelName:          req.ChatModelName,
+		ChatModelProvider:      req.ChatModelProvider,
+		EmbeddingModelName:     req.EmbeddingModelName,
+		EmbeddingModelProvider: req.EmbeddingModelProvider,
+		StorageType:            req.StorageType,
+		StorageConfig:          model.JSON{},
+		DocumentCount:          0,
+		Tags:                   req.Tags,
+		Status:                 model.KnowledgeBaseStatusActive,
+	}
+	err := s.repo.createKnowledgeBase(ctx, kb)
+	if err != nil {
+		logs.Errorf("创建知识库(管理员)失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	user, err := s.repo.getUserByID(ctx, req.CreatorID)
+	if err != nil {
+		logs.Errorf("查询创建者信息失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	return toKnowledgeBaseDetailAdminResponse(kb, user, 0, 0), nil
+}
+
+func (s *service) listKnowledgeBasesAdmin(ctx context.Context, req ListKnowledgeBasesAdminReq) (*ListKnowledgeBasesAdminResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	filter := AdminKnowledgeBaseFilter{
+		Name:      req.Name,
+		Search:    req.Search,
+		CreatorID: req.CreatorID,
+		Status:    req.Status,
+		Limit:     req.PageSize,
+		Offset:    (req.Page - 1) * req.PageSize,
+	}
+
+	kbs, total, err := s.repo.listKnowledgeBasesAdmin(ctx, filter)
+	if err != nil {
+		logs.Errorf("查询知识库列表(管理员)失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	var creatorIDs []uuid.UUID
+	for _, kb := range kbs {
+		creatorIDs = append(creatorIDs, kb.CreatorID)
+	}
+	userMap, err := s.repo.getUsersByIDs(ctx, creatorIDs)
+	if err != nil {
+		logs.Errorf("批量查询用户信息失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	var list []*KnowledgeBaseListAdminResponse
+	for _, kb := range kbs {
+		list = append(list, toKnowledgeBaseListAdminResponse(kb, userMap[kb.CreatorID]))
+	}
+
+	return &ListKnowledgeBasesAdminResponse{
+		List:        list,
+		Total:       total,
+		CurrentPage: req.Page,
+		PageSize:    req.PageSize,
+	}, nil
+}
+
+func (s *service) getKnowledgeBaseAdmin(ctx context.Context, id uuid.UUID) (*KnowledgeBaseDetailAdminResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	kb, err := s.repo.getKnowledgeBaseByID(ctx, id)
+	if err != nil {
+		logs.Errorf("查询知识库详情(管理员)失败: %v", err)
+		return nil, errs.DBError
+	}
+	if kb == nil {
+		return nil, biz.ErrKnowledgeBaseNotFound
+	}
+
+	totalSize, docCount, err := s.repo.countKnowledgeBaseDocuments(ctx, kb.ID)
+	if err != nil {
+		logs.Errorf("统计知识库文档失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	user, err := s.repo.getUserByID(ctx, kb.CreatorID)
+	if err != nil {
+		logs.Errorf("查询创建者信息失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	return toKnowledgeBaseDetailAdminResponse(kb, user, totalSize, docCount), nil
+}
+
+func (s *service) updateKnowledgeBaseAdmin(ctx context.Context, req UpdateKnowledgeBaseAdminReq) (*KnowledgeBaseDetailAdminResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	kb, err := s.repo.getKnowledgeBaseByID(ctx, req.ID)
+	if err != nil {
+		logs.Errorf("查询知识库(管理员)失败: %v", err)
+		return nil, errs.DBError
+	}
+	if kb == nil {
+		return nil, biz.ErrKnowledgeBaseNotFound
+	}
+
+	if req.Name != "" {
+		kb.Name = req.Name
+	}
+	if req.Description != "" {
+		kb.Description = req.Description
+	}
+	if req.ChatModelName != "" {
+		kb.ChatModelName = req.ChatModelName
+	}
+	if req.ChatModelProvider != "" {
+		kb.ChatModelProvider = req.ChatModelProvider
+	}
+	if req.EmbeddingModelName != "" {
+		kb.EmbeddingModelName = req.EmbeddingModelName
+	}
+	if req.EmbeddingModelProvider != "" {
+		kb.EmbeddingModelProvider = req.EmbeddingModelProvider
+	}
+	if req.Tags != nil {
+		kb.Tags = req.Tags
+	}
+	if req.Status != "" {
+		kb.Status = req.Status
+	}
+
+	err = s.repo.updateKnowledgeBase(ctx, kb)
+	if err != nil {
+		logs.Errorf("更新知识库(管理员)失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	totalSize, docCount, err := s.repo.countKnowledgeBaseDocuments(ctx, kb.ID)
+	if err != nil {
+		logs.Errorf("统计知识库文档失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	user, err := s.repo.getUserByID(ctx, kb.CreatorID)
+	if err != nil {
+		logs.Errorf("查询创建者信息失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	return toKnowledgeBaseDetailAdminResponse(kb, user, totalSize, docCount), nil
+}
+
+func (s *service) deleteKnowledgeBaseAdmin(ctx context.Context, id uuid.UUID) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	kb, err := s.repo.getKnowledgeBaseByID(ctx, id)
+	if err != nil {
+		logs.Errorf("查询知识库(管理员)失败: %v", err)
+		return errs.DBError
+	}
+	if kb == nil {
+		return biz.ErrKnowledgeBaseNotFound
+	}
+
+	err = s.repo.deleteKnowledgeBase(ctx, kb.ID)
+	if err != nil {
+		logs.Errorf("删除知识库(管理员)失败: %v", err)
+		return errs.DBError
+	}
+	return nil
+}

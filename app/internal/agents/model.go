@@ -166,8 +166,11 @@ func (m *models) listAgents(ctx context.Context, userID uuid.UUID, filter AgentF
 	var count int64
 	query := m.db.WithContext(ctx).Model(&model.Agent{})
 	query = query.Where("creator_id = ?", userID)
-	if filter.Name != "" {
-		query = query.Where("name like ?", "%"+filter.Name+"%")
+	if filter.Name != "" || filter.Desc != "" {
+		query = query.Where(
+			m.db.Where("name LIKE ?", "%"+filter.Name+"%").
+				Or("desc LIKE ?", "%"+filter.Desc+"%"),
+		)
 	}
 	if filter.Status != "" {
 		query = query.Where("status = ?", filter.Status)
@@ -179,6 +182,7 @@ func (m *models) listAgents(ctx context.Context, userID uuid.UUID, filter AgentF
 
 type AgentFilter struct {
 	Name   string
+	Desc   string
 	Status model.AgentStatus
 	Limit  int
 	Offset int
