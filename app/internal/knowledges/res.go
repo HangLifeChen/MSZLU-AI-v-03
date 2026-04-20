@@ -50,7 +50,7 @@ type SearchResult struct {
 	Score      float64         `json:"score"`
 	Metadata   model.JSON      `json:"metadata"`
 	Position   int             `json:"position"`
-	Document   *model.Document `json:"document"`
+	Document   *model.Document `json:"document";gorm:"foreignKey:DocumentId;references:Id"`
 }
 
 type DocumentContent struct {

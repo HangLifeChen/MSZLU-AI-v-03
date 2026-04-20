@@ -684,6 +684,7 @@ func (s *service) searchKnowledgeBase(ctx context.Context, userId uuid.UUID, kbI
 		return &SearchResponse{
 			KbId:  kbId,
 			Query: params.Query,
+
 			Took:  time.Since(startTime).Microseconds(),
 			Total: 0,
 		}, nil
