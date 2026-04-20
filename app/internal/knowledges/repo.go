@@ -25,4 +25,8 @@ type repository interface {
 	deleteDocuments(ctx context.Context, tx *gorm.DB, userId uuid.UUID, kbId uuid.UUID, documentId uuid.UUID) error
 	deleteDocumentChunks(ctx context.Context, tx *gorm.DB, kbId uuid.UUID, documentId uuid.UUID) error
 	getDocumentChunksByIds(ctx context.Context, ids []string) ([]*model.DocumentChunk, error)
+	listKnowledgeBasesAdmin(ctx context.Context, filter AdminKnowledgeBaseFilter) ([]*model.KnowledgeBase, int64, error)
+	getKnowledgeBaseByID(ctx context.Context, id uuid.UUID) (*model.KnowledgeBase, error)
+	getUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
+	getUsersByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*model.User, error)
 }

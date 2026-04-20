@@ -44,4 +44,5 @@ func (u *AgentRouter) Register(engine *gin.Engine) {
 		adminGroup.PUT("/:id", adminAgentsHandler.UpdateAgentAdmin)
 		adminGroup.DELETE("/:id", adminAgentsHandler.DeleteAgentAdmin)
 	}
+
 }
