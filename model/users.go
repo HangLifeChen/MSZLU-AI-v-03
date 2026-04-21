@@ -22,6 +22,7 @@ type User struct {
 	EmailVerified   bool             `json:"emailVerified" gorm:"type:boolean;default:false"`
 	Introduction    string           `json:"introduction" gorm:"type:varchar(255);default:''"`
 	TelephoneNumber string           `json:"telephoneNumber" gorm:"type:varchar(20);default:''"`
+	CreatedAt       time.Time        `json:"createdAt" gorm:"autoCreateTime"`
 }
 
 // TableName 指定表名
