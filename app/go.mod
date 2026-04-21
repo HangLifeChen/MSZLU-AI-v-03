@@ -15,6 +15,7 @@ require (
 	github.com/cloudwego/eino-ext/components/model/ollama v0.1.8
 	github.com/cloudwego/eino-ext/components/model/openai v0.1.8
 	github.com/cloudwego/eino-ext/components/model/qwen v0.1.5
+	github.com/ecodeclub/ekit v0.0.10
 	github.com/eino-contrib/ollama v0.1.0
 	github.com/elastic/go-elasticsearch/v8 v8.16.0
 	github.com/gin-gonic/gin v1.12.0

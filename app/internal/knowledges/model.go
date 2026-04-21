@@ -4,6 +4,7 @@ import (
 	"context"
 	"model"
 
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/google/uuid"
 	"github.com/mszlu521/thunder/gorms"
 	"gorm.io/gorm"
@@ -137,7 +138,22 @@ func (m *models) listKnowledgeBases(ctx context.Context, userId uuid.UUID, filte
 	query = query.Where("creator_id = ?", userId)
 	query = query.Count(&count)
 	query = query.Limit(filter.Limit).Offset(filter.Offset)
-	return kbs, count, query.Find(&kbs).Error
+	err := query.Find(&kbs).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	ids := slice.Map(kbs, func(idx int, t *model.KnowledgeBase) uuid.UUID {
+		return t.ID
+	})
+	for i, id := range ids {
+		docCount, _, err := m.countKnowledgeBaseDocuments(ctx, id)
+		if err != nil {
+			return nil, 0, err
+		}
+		kbs[i].DocumentCount = uint(docCount)
+	}
+
+	return kbs, count, nil
 }
 
 type KnowledgeBaseFilter struct {

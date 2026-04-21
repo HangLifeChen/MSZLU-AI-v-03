@@ -111,7 +111,7 @@ func (s *service) getKnowledgeBase(ctx context.Context, userId uuid.UUID, id uui
 		return nil, errs.DBError
 	}
 	//统计文档数和总字节数
-	totalSize, docCount, err := s.repo.countKnowledgeBaseDocuments(ctx, kb.ID)
+	docCount, totalSize, err := s.repo.countKnowledgeBaseDocuments(ctx, kb.ID)
 	if err != nil {
 		logs.Errorf("count knowledge base documents error: %v", err)
 		return nil, errs.DBError
