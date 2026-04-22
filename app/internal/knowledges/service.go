@@ -707,15 +707,14 @@ func (s *service) searchKnowledgeBase(ctx context.Context, userId uuid.UUID, kbI
 			continue
 		}
 		results = append(results, &SearchResult{
-			Content:      chunk.Content,
-			DocumentId:   chunk.DocumentID,
-			DocumentName: doc.Name,
-			FileType:     doc.FileType,
-			Id:           chunk.ID,
-			Metadata:     chunk.MetaInfo,
-			Position:     i,
-			Score:        parentIdMap[chunk.ID.String()],
-			CreateAt:     chunk.CreatedAt,
+			Content:    chunk.Content,
+			DocumentId: chunk.DocumentID,
+			Document:   doc,
+			Id:         chunk.ID,
+			Metadata:   chunk.MetaInfo,
+			Position:   i,
+			Score:      parentIdMap[chunk.ID.String()],
+			CreateAt:   chunk.CreatedAt,
 		})
 	}
 	return &SearchResponse{

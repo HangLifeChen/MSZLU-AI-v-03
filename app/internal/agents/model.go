@@ -38,7 +38,7 @@ func (m *models) deleteSessionMessages(ctx context.Context, sessionId uuid.UUID)
 
 func (m *models) getSessionMessages(ctx context.Context, sessionId uuid.UUID) ([]*model.ChatMessage, error) {
 	var messages []*model.ChatMessage
-	err := m.db.WithContext(ctx).Where("session_id = ?", sessionId).Find(&messages).Error
+	err := m.db.WithContext(ctx).Where("session_id = ?", sessionId).Order("created_at ASC").Find(&messages).Error
 	return messages, err
 }
 
