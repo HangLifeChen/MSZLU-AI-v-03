@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"model"
 	"strings"
 	"sync"
@@ -227,8 +228,11 @@ func (s *service) agentMessage(ctx context.Context, userID uuid.UUID, req AgentM
 		agent, err := s.repo.getAgent(ctx, userID, req.AgentID)
 		if err != nil {
 			logs.Errorf("查询智能代理失败: %v", err)
-			//告诉客户端,这里我们封装一下消息
 			s.sendError(ctx, errChan, err)
+			return
+		}
+		if agent == nil {
+			s.sendError(ctx, errChan, biz.AgentNotFound)
 			return
 		}
 		if agent.Name == "AI面试" {
@@ -365,27 +369,46 @@ func (s *service) handleNormalAgent(ctx context.Context, userID uuid.UUID, req A
 			s.sendData(ctx, dataChan, ai.BuildErrMessage(events.AgentName, events.Err.Error()))
 			return
 		}
-		//判断有没有内容生成
-		if events.Output != nil && events.Output.MessageOutput != nil {
-			msg, err := events.Output.MessageOutput.GetMessage()
-			if err != nil {
-				logs.Errorf("获取模型返回内容失败: %v", err)
-				s.sendError(ctx, errChan, err)
-				return
+		if events.Output == nil || events.Output.MessageOutput == nil {
+			continue
+		}
+		mv := events.Output.MessageOutput
+		toolName := mv.ToolName
+		var fullContent strings.Builder
+		if mv.IsStreaming && mv.MessageStream != nil {
+			if mv.Message != nil && mv.Message.ReasoningContent != "" {
+				s.sendData(ctx, dataChan, ai.BuildReasoningMessage(events.AgentName, toolName, mv.Message.ReasoningContent))
 			}
-			if msg.Content == "" && msg.ReasoningContent == "" {
-				continue
+			for {
+				chunk, recvErr := mv.MessageStream.Recv()
+				if recvErr == io.EOF {
+					break
+				}
+				if recvErr != nil {
+					logs.Errorf("获取模型返回内容失败: %v", recvErr)
+					s.sendError(ctx, errChan, recvErr)
+					return
+				}
+				if chunk.ReasoningContent != "" {
+					s.sendData(ctx, dataChan, ai.BuildReasoningMessage(events.AgentName, toolName, chunk.ReasoningContent))
+				}
+				s.sendData(ctx, dataChan, ai.BuildMessage(events.AgentName, toolName, chunk.Content))
+				fullContent.WriteString(chunk.Content)
 			}
-			if msg.ReasoningContent != "" {
-				//思考内容
-				s.sendData(ctx, dataChan, ai.BuildReasoningMessage(events.AgentName, msg.ToolName, msg.ReasoningContent))
+		} else if mv.Message != nil {
+			if mv.Message.ReasoningContent != "" {
+				s.sendData(ctx, dataChan, ai.BuildReasoningMessage(events.AgentName, toolName, mv.Message.ReasoningContent))
 			}
-			logs.Infof("Agent名称[%s], 工具名称:[%s], 模型返回内容: %s", events.AgentName, msg.ToolName, msg.Content)
-			if msg.Content != "" {
-				go s.saveChatMessage(session.ID, msg.Content, schema.Assistant)
-				s.sendData(ctx, dataChan, ai.BuildMessage(events.AgentName, msg.ToolName, msg.Content))
+			if mv.Message.Content != "" {
+				s.sendData(ctx, dataChan, ai.BuildMessage(events.AgentName, toolName, mv.Message.Content))
+				fullContent.WriteString(mv.Message.Content)
 			}
 		}
+		if fullContent.String() == "" {
+			continue
+		}
+		logs.Infof("Agent名称[%s], 工具名称:[%s], 模型返回内容: %s", events.AgentName, toolName, &fullContent)
+		go s.saveChatMessage(session.ID, fullContent.String(), schema.Assistant)
 	}
 }
 
