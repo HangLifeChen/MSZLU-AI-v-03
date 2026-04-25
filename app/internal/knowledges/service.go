@@ -66,7 +66,7 @@ func (s *service) createKnowledgeBase(ctx context.Context, userId uuid.UUID, req
 		ChatModelProvider:      req.ChatModelProvider,
 		EmbeddingModelName:     req.EmbeddingModelName,
 		EmbeddingModelProvider: req.EmbeddingModelProvider,
-		StorageType:            model.StorageTypeElasticSearch,
+		StorageType:            model.StorageTypeMilvus,
 		StorageConfig:          model.JSON{},
 		DocumentCount:          0,
 		Tags:                   req.Tags,
@@ -309,16 +309,23 @@ func (s *service) uploadDocuments(ctx context.Context, userId uuid.UUID, kbId uu
 		return nil, biz.FileLoadError
 	}
 	defer src.Close()
-	tempFile, err := s.createTempFileFromUploadFile(src, uploadFile.Filename)
+	// tempFile, err := s.createTempFileFromUploadFile(src, uploadFile.Filename)
+	// if err != nil {
+	// 	logs.Errorf("create temp file error: %v", err)
+	// 	return nil, biz.FileLoadError
+	// }
+	url, err := utils.Upload(ctx, userId, uploadFile)
 	if err != nil {
-		logs.Errorf("create temp file error: %v", err)
+		logs.Errorf("upload file error: %v", err)
 		return nil, biz.FileLoadError
 	}
-	defer tempFile.Close()
-	defer os.Remove(tempFile.Name())
+	// defer tempFile.Close()
+
+	// defer os.Remove(tempFile.Name())
 	//这个URL是文件的地址，正常我们应该上传到云存储中，这里我们先创建一个本地临时文件来获取内容
 	docs, err := loader.Load(ctx, document.Source{
-		URI: tempFile.Name(),
+		// URI: tempFile.Name(),
+		URI: url,
 	})
 	if err != nil {
 		logs.Errorf("load file error: %v", err)
@@ -331,10 +338,11 @@ func (s *service) uploadDocuments(ctx context.Context, userId uuid.UUID, kbId uu
 		Name:            uploadFile.Filename,
 		FileType:        ext,
 		Size:            uploadFile.Size,
-		StorageKey:      uploadFile.Filename,
-		FileHash:        "",
-		Status:          model.DocumentStatusPending,
-		ErrorMessage:    "",
+		// StorageKey:      uploadFile.Filename,
+		StorageKey:   url,
+		FileHash:     "",
+		Status:       model.DocumentStatusPending,
+		ErrorMessage: "",
 	}
 	err = s.repo.createDocument(ctx, doc)
 	if err != nil {

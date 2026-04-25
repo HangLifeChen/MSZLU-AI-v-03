@@ -29,7 +29,7 @@ type ListLLMsReq struct {
 	ModelID   string        `json:"modelId" form:"modelId"`
 	Name      string        `json:"name" form:"name"`
 	Provider  string        `json:"provider" form:"provider"`
-	ModelType model.LLMType `json:"modelType"`
+	ModelType model.LLMType `json:"modelType" form:"modelType"`
 	Status    string        `json:"status" form:"status"`
 	Limit     int           `json:"limit" form:"limit"`
 	Offset    int           `json:"offset" form:"offset"`
