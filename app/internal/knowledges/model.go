@@ -235,3 +235,18 @@ func (m *models) getUsersByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.U
 	}
 	return userMap, nil
 }
+
+func (m *models) countKnowledgeBasesSize(ctx context.Context, userId uuid.UUID) (int64, error) {
+	var size int64
+	var ids []uuid.UUID
+	err := m.db.WithContext(ctx).Model(&model.KnowledgeBase{}).Where("creator_id = ?", userId).Select("id").Scan(&ids).Error
+	if err != nil {
+		return 0, err
+	}
+	err = m.db.WithContext(ctx).
+		Model(&model.Document{}).
+		Where("kb_id IN (?)", ids).
+		Select("SUM(size)").
+		Scan(&size).Error
+	return size, err
+}

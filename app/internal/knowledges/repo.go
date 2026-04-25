@@ -11,6 +11,7 @@ import (
 type repository interface {
 	createKnowledgeBase(ctx context.Context, m *model.KnowledgeBase) error
 	listKnowledgeBases(ctx context.Context, userId uuid.UUID, filter KnowledgeBaseFilter) ([]*model.KnowledgeBase, int64, error)
+	countKnowledgeBasesSize(ctx context.Context, userId uuid.UUID) (int64, error)
 	getKnowledgeBase(ctx context.Context, userId uuid.UUID, id uuid.UUID) (*model.KnowledgeBase, error)
 	countKnowledgeBaseDocuments(ctx context.Context, id uuid.UUID) (int64, int64, error)
 	updateKnowledgeBase(ctx context.Context, kb *model.KnowledgeBase) error

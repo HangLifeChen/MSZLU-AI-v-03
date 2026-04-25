@@ -98,6 +98,17 @@ func (s *service) listKnowledgeBases(ctx context.Context, userId uuid.UUID, para
 		logs.Errorf("list knowledge base error: %v", err)
 		return nil, errs.DBError
 	}
+	//统计知识库的总大小
+	usedKnowledgeBases, err := s.repo.countKnowledgeBasesSize(ctx, userId)
+	if err != nil {
+		logs.Errorf("count knowledge base size error: %v", err)
+		return nil, errs.DBError
+	}
+	_, err = event.Trigger("UpdateCurrentSubscription", &shared.UpdateCurrentBaseSubscriptionReq{
+		UserId:                userId,
+		UsedKnowledgeBaseSize: int64(usedKnowledgeBases),
+	})
+
 	return &ListResp{
 		KnowledgeBases: kbs,
 		Total:          total,
@@ -207,6 +218,11 @@ func (s *service) listDocuments(ctx context.Context, userId uuid.UUID, kbId uuid
 		logs.Errorf("list documents error: %v", err)
 		return nil, errs.DBError
 	}
+	usedKnowledgeBases := 0
+	for _, doc := range documents {
+		usedKnowledgeBases += int(doc.Size)
+	}
+
 	return &ListDocumentsResp{
 		Documents: documents,
 		Total:     total,

@@ -3,6 +3,7 @@ package router
 import (
 	"app/internal/knowledges"
 	"app/internal/llms"
+	"app/internal/subscriptions"
 	"app/internal/tools"
 
 	"github.com/mszlu521/thunder/event"
@@ -21,4 +22,6 @@ func (u *Event) Register() {
 	knowledgeService := knowledges.NewPublicService()
 	event.Register("getKnowledgeBase", knowledgeService.GetKnowledgeBase)
 	event.Register("searchKnowledgeBase", knowledgeService.SearchKnowledgeBase)
+	subscriptionService := subscriptions.NewPublicService()
+	event.Register("UpdateCurrentSubscription", subscriptionService.UpdateCurrentSubscription)
 }

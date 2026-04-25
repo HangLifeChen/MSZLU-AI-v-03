@@ -24,6 +24,12 @@ type CheckPaymentStatusReq struct {
 	OrderID uuid.UUID `uri:"orderId" binding:"required"`
 }
 
+type UpdateCurrentSubscriptionReq struct {
+	UsedAgents            int64 `json:"usedAgents" gorm:"default:0"`
+	UsedWorkflows         int64 `json:"usedWorkflows" gorm:"default:0"`
+	UsedKnowledgeBaseSize int64 `json:"usedKnowledgeBaseSize" gorm:"default:0"` // 以MB为单位
+}
+
 // CreatePlanConfigReq 创建订阅计划配置请求
 type CreatePlanConfigReq struct {
 	Name                 string                 `json:"name" binding:"required"`

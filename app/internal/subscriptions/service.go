@@ -74,6 +74,7 @@ func (s *service) getSubscriptionPlans(ctx context.Context) ([]*SubscriptionPlan
 }
 
 // updateSubscription 创建或更新订阅
+
 func (s *service) updateSubscription(ctx context.Context, userID uuid.UUID, req UpdateSubscriptionReq) (*SubscriptionResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -136,6 +137,33 @@ func (s *service) updateSubscription(ctx context.Context, userID uuid.UUID, req 
 	}
 
 	return toSubscriptionResponse(subscription, planConfig), nil
+}
+
+// updateCurrentSubscription 更新当前订阅
+func (s *service) updateCurrentSubscription(ctx context.Context, userID uuid.UUID, req UpdateCurrentSubscriptionReq) (*UserSubscription, error) {
+
+	// 查询现有订阅
+	subscription, err := s.repo.getUserSubscription(ctx, userID)
+	if err != nil {
+		logs.Errorf("查询用户订阅失败: %v", err)
+		return nil, errs.DBError
+	}
+	if subscription == nil {
+		return nil, biz.ErrSubscriptionNotFound
+	}
+
+	// 更新订阅
+	subscription.UsedAgents = req.UsedAgents
+	subscription.UsedWorkflows = req.UsedWorkflows
+	subscription.UsedKnowledgeBaseSize = req.UsedKnowledgeBaseSize
+
+	err = s.repo.updateUserSubscription(ctx, subscription)
+	if err != nil {
+		logs.Errorf("更新用户订阅失败: %v", err)
+		return nil, errs.DBError
+	}
+
+	return subscription, nil
 }
 
 // cancelSubscription 取消订阅

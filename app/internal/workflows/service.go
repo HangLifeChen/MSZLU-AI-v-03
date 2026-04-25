@@ -1,6 +1,7 @@
 package workflows
 
 import (
+	"app/shared"
 	"common/biz"
 	"context"
 	"core/ai"
@@ -9,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mszlu521/thunder/database"
 	"github.com/mszlu521/thunder/errs"
+	"github.com/mszlu521/thunder/event"
 	"github.com/mszlu521/thunder/logs"
 	"github.com/mszlu521/thunder/res"
 )
@@ -60,6 +62,11 @@ func (s *service) listWorkflows(ctx context.Context, userId uuid.UUID, l *listRe
 		UserId: userId,
 		Limit:  l.PageSize,
 		Offset: (l.Page - 1) * l.PageSize,
+	})
+
+	_, err = event.Trigger("UpdateCurrentSubscription", &shared.UpdateCurrentBaseSubscriptionReq{
+		UserId:        userId,
+		UsedWorkflows: int64(len(list)),
 	})
 	if err != nil {
 		logs.Errorf("list workflows error: %v", err)

@@ -62,6 +62,7 @@ func (s *service) createAgent(ctx context.Context, userId uuid.UUID, req CreateA
 		logs.Errorf("创建智能代理失败: %v", err)
 		return nil, errs.DBError
 	}
+
 	return agent, nil
 }
 
@@ -77,6 +78,14 @@ func (s *service) listAgents(ctx context.Context, userID uuid.UUID, req SearchAg
 	list, total, err := s.repo.listAgents(ctx, userID, filter)
 	if err != nil {
 		logs.Errorf("查询智能代理列表失败: %v", err)
+		return nil, errs.DBError
+	}
+	_, err = event.Trigger("UpdateCurrentSubscription", &shared.UpdateCurrentBaseSubscriptionReq{
+		UserId:     userID,
+		UsedAgents: int64(len(list)),
+	})
+	if err != nil {
+		logs.Errorf("更新用户订阅失败: %v", err)
 		return nil, errs.DBError
 	}
 	return &ListAgentResponse{

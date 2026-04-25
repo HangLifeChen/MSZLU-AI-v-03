@@ -74,6 +74,26 @@ func (h *Handler) UpdateSubscription(c *gin.Context) {
 	res.Success(c, resp)
 }
 
+func (h *Handler) UpdateCurrentSubscription(c *gin.Context) {
+	var updateReq UpdateCurrentSubscriptionReq
+	if err := req.JsonParam(c, &updateReq); err != nil {
+		return
+	}
+
+	userID, ok := req.GetUserIdUUID(c)
+	if !ok {
+		return
+	}
+
+	resp, err := h.service.updateCurrentSubscription(c.Request.Context(), userID, updateReq)
+	if err != nil {
+		res.Error(c, err)
+		return
+	}
+
+	res.Success(c, resp)
+}
+
 // CancelSubscription 取消订阅
 // DELETE /api/v1/subscription
 func (h *Handler) CancelSubscription(c *gin.Context) {

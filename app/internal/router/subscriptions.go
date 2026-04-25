@@ -19,6 +19,8 @@ func (u *SubscriptionRouter) Register(engine *gin.Engine) {
 		group.GET("/plans", handler.GetSubscriptionPlans)
 		// 创建或更新订阅
 		group.POST("", handler.UpdateSubscription)
+		// 更新当前订阅信息
+		group.POST("/update", handler.UpdateCurrentSubscription)
 		// 取消订阅
 		group.DELETE("", handler.CancelSubscription)
 		// 创建微信支付订单
