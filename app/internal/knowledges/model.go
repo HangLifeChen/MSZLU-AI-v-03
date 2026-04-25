@@ -87,6 +87,9 @@ func (m *models) listDocuments(ctx context.Context, userId uuid.UUID, kbId uuid.
 	if filter.Search != "" {
 		query = query.Where("name LIKE ?", "%"+filter.Search+"%")
 	}
+	if filter.Status != "" {
+		query = query.Where("status = ?", filter.Status)
+	}
 	query = query.Where("kb_id = ? and creator_id = ?", kbId, userId)
 	query = query.Count(&count)
 	query = query.Limit(filter.Limit).Offset(filter.Offset)

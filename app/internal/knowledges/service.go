@@ -14,6 +14,7 @@ import (
 	"io"
 	"mime/multipart"
 	"model"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -309,23 +310,22 @@ func (s *service) uploadDocuments(ctx context.Context, userId uuid.UUID, kbId uu
 		return nil, biz.FileLoadError
 	}
 	defer src.Close()
-	// tempFile, err := s.createTempFileFromUploadFile(src, uploadFile.Filename)
-	// if err != nil {
-	// 	logs.Errorf("create temp file error: %v", err)
-	// 	return nil, biz.FileLoadError
-	// }
+	tempFile, err := s.createTempFileFromUploadFile(src, uploadFile.Filename)
+	if err != nil {
+		logs.Errorf("create temp file error: %v", err)
+		return nil, biz.FileLoadError
+	}
+	defer tempFile.Close()
+	defer os.Remove(tempFile.Name())
+
 	url, err := utils.Upload(ctx, userId, uploadFile)
 	if err != nil {
 		logs.Errorf("upload file error: %v", err)
 		return nil, biz.FileLoadError
 	}
-	// defer tempFile.Close()
 
-	// defer os.Remove(tempFile.Name())
-	//这个URL是文件的地址，正常我们应该上传到云存储中，这里我们先创建一个本地临时文件来获取内容
 	docs, err := loader.Load(ctx, document.Source{
-		// URI: tempFile.Name(),
-		URI: url,
+		URI: tempFile.Name(),
 	})
 	if err != nil {
 		logs.Errorf("load file error: %v", err)
@@ -899,25 +899,26 @@ func (s *service) reindexDocument(ctx context.Context, userId uuid.UUID, kbId uu
 }
 
 func (s *service) reprocessDocument(ctx context.Context, doc *model.Document, kb *model.KnowledgeBase) error {
-	//尝试从存储中读取文件
-	//这里假设文件存储在本地文件系统中，路径为 doc.StorageKey
-	//如果文件不存在，则返回错误
-	filePath := doc.StorageKey
-	if filePath == "" {
+	fileURL := doc.StorageKey
+	if fileURL == "" {
 		return biz.ErrDocumentNotFound
 	}
 
-	//检查文件是否存在
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		logs.Errorf("file not found: %s", filePath)
-		return biz.ErrDocumentNotFound
+	ext := doc.FileType
+	if ext == "" {
+		ext = strings.ToLower(filepath.Ext(fileURL))
 	}
-
-	//读取文件内容
-	ext := strings.ToLower(filepath.Ext(filePath))
 	fileType := kbs.FromExtension(ext)
+
+	tempFile, err := s.downloadFromOSS(ctx, fileURL, ext)
+	if err != nil {
+		logs.Errorf("download from oss error: %v", err)
+		return biz.FileLoadError
+	}
+	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
+
 	var selectParser parser.Parser
-	var err error
 	switch fileType {
 	case kbs.Markdown:
 		selectParser = parser.TextParser{}
@@ -969,14 +970,13 @@ func (s *service) reprocessDocument(ctx context.Context, doc *model.Document, kb
 	}
 
 	docs, err := loader.Load(ctx, document.Source{
-		URI: filePath,
+		URI: tempFile.Name(),
 	})
 	if err != nil {
 		logs.Errorf("load file error: %v", err)
 		return biz.FileLoadError
 	}
 
-	//处理文档
 	err = s.processDocumentAndVectorAndStore(ctx, doc, docs, kb)
 	if err != nil {
 		logs.Errorf("process document error: %v", err)
@@ -984,6 +984,38 @@ func (s *service) reprocessDocument(ctx context.Context, doc *model.Document, kb
 	}
 
 	return nil
+}
+
+func (s *service) downloadFromOSS(ctx context.Context, fileURL string, ext string) (*os.File, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request error: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("download file error: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("download file failed, status: %d", resp.StatusCode)
+	}
+	tempFile, err := os.CreateTemp("", "reprocess-*"+ext)
+	if err != nil {
+		return nil, fmt.Errorf("create temp file error: %w", err)
+	}
+	_, err = io.Copy(tempFile, resp.Body)
+	if err != nil {
+		tempFile.Close()
+		os.Remove(tempFile.Name())
+		return nil, fmt.Errorf("write temp file error: %w", err)
+	}
+	_, err = tempFile.Seek(0, io.SeekStart)
+	if err != nil {
+		tempFile.Close()
+		os.Remove(tempFile.Name())
+		return nil, fmt.Errorf("seek temp file error: %w", err)
+	}
+	return tempFile, nil
 }
 
 func (s *service) parseMarkdownHeaders(content string) []*schema.Document {
